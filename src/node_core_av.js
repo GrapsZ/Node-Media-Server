@@ -30,7 +30,7 @@ const AUDIO_CODEC_NAME = [
   'AAC',
   'Speex',
   '',
-  '',
+  'OPUS',
   'MP3-8K',
   'DeviceSpecific',
   'Uncompressed'
@@ -51,8 +51,8 @@ const VIDEO_CODEC_NAME = [
   'H264',
   '',
   '',
-  '',
-  '',
+  'VP8',
+  'VP9',
   'H265'
 ];
 
@@ -298,7 +298,7 @@ function HEVCParsePtl(bitop, hevc, max_sub_layers_minus1) {
 
   if (max_sub_layers_minus1 > 0) {
     for (let i = max_sub_layers_minus1; i < 8; i++) {
-      bitop.read(2)
+      bitop.read(2);
     }
   }
 
@@ -373,6 +373,10 @@ function HEVCParseSPS(SPS, hevc) {
   psps.pic_width_in_luma_samples = rbspBitop.read_golomb();
   psps.pic_height_in_luma_samples = rbspBitop.read_golomb();
   psps.conformance_window_flag = rbspBitop.read(1);
+  psps.conf_win_left_offset = 0;
+  psps.conf_win_right_offset = 0;
+  psps.conf_win_top_offset = 0;
+  psps.conf_win_bottom_offset = 0;
   if (psps.conformance_window_flag) {
     let vert_mult = 1 + (psps.chroma_format_idc < 2);
     let horiz_mult = 1 + (psps.chroma_format_idc < 3);
@@ -436,7 +440,7 @@ function readHEVCSpecificConfig(hevcSequenceHeader) {
         if (p.length < 2) {
           break;
         }
-        k = (p[0] << 8) | p[1];
+        let k = (p[0] << 8) | p[1];
         // Logger.debug('k', k);
         if (p.length < 2 + k) {
           break;

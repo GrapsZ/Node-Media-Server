@@ -4,6 +4,7 @@
 //  Copyright (c) 2018 Nodemedia. All rights reserved.
 //
 const Logger = require('./node_core_logger');
+const NodeCoreUtils = require('./node_core_utils');
 
 const EventEmitter = require('events');
 const { spawn } = require('child_process');
@@ -14,15 +15,17 @@ class NodeRelaySession extends EventEmitter {
   constructor(conf) {
     super();
     this.conf = conf;
+    this.id = NodeCoreUtils.generateNewSessionID();
+    this.ts = Date.now() / 1000 | 0;
+    this.TAG = 'relay';
   }
 
   run() {
     let format = this.conf.ouPath.startsWith('rtsp://') ? 'rtsp' : 'flv';
-    let argv = ['-fflags', 'nobuffer', '-i', this.conf.inPath, '-c', 'copy', '-f', format, this.conf.ouPath];
+    let argv = ['-re', '-i', this.conf.inPath, '-c', 'copy', '-f', format, this.conf.ouPath];
     if (this.conf.inPath[0] === '/' || this.conf.inPath[1] === ':') {
       argv.unshift('-1');
       argv.unshift('-stream_loop');
-      argv.unshift('-re');
     }
 
     if (this.conf.inPath.startsWith('rtsp://') && this.conf.rtsp_transport) {
@@ -32,22 +35,23 @@ class NodeRelaySession extends EventEmitter {
       }
     }
 
-    Logger.ffdebug(argv.toString());
+    Logger.log('[relay task] id=' + this.id, 'cmd=ffmpeg', argv.join(' '));
+
     this.ffmpeg_exec = spawn(this.conf.ffmpeg, argv);
     this.ffmpeg_exec.on('error', (e) => {
       Logger.ffdebug(e);
     });
 
     this.ffmpeg_exec.stdout.on('data', (data) => {
-      Logger.ffdebug(`FF输出：${data}`);
+      Logger.ffdebug(`FF_LOG:${data}`);
     });
 
     this.ffmpeg_exec.stderr.on('data', (data) => {
-      Logger.ffdebug(`FF输出：${data}`);
+      Logger.ffdebug(`FF_LOG:${data}`);
     });
 
     this.ffmpeg_exec.on('close', (code) => {
-      Logger.log('[Relay end] id=', this.id);
+      Logger.log('[relay end] id=' + this.id, 'code=' + code);
       this.emit('end', this.id);
     });
   }
